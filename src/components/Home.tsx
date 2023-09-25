@@ -7,6 +7,8 @@ const Home = () => {
   const walletOwner = JSON.parse(
     localStorage.getItem("smartContractAccount") || "{}"
   );
+  console.log("walletOwner", walletOwner);
+
   const [accountAddress, setAccountAddress] = useState(walletOwner || "");
   const [transactionHash, setTransactionHash] = useState<any>("");
   const [transactionsArr, setTransactionsArr] = useState([]);
@@ -35,6 +37,8 @@ const Home = () => {
       const accounts = await ethereum.request({
         method: "eth_requestAccounts",
       });
+      console.log("accounts", accounts);
+
       localStorage.setItem("smartContractAccount", JSON.stringify(accounts[0]));
       setAccountAddress(accounts[0]);
     } catch (error) {
@@ -137,8 +141,19 @@ const Home = () => {
     try {
       if (!ethereum) return alert("Please install MetaMask.");
       const accounts = await ethereum.request({ method: "eth_accounts" });
-      console.log("accounts",accounts);
-      
+      ethereum.on("chainChanged", (chainId: any) => {
+        window.location.reload();
+      });
+      ethereum.on("accountsChanged", async function (accounts: any) {
+        console.log("acc", accounts);
+        setAccountAddress(accounts[0]);
+        localStorage.setItem(
+          "smartContractAccount",
+          JSON.stringify(accounts[0])
+        );
+      });
+      console.log("accounts", accounts);
+
       if (accounts.length) {
         getAllTheTransactions();
       } else {
@@ -162,15 +177,21 @@ const Home = () => {
       throw new Error("No ethereum object");
     }
   };
+  console.log(accountAddress.length > 0);
+
+  useEffect(() => {
+    if (accountAddress.length > 0) {
+      checkIfTransactionsExists();
+    }
+  }, [transactionHash]);
 
   useEffect(() => {
     checkIfWalletIsConnect();
-    checkIfTransactionsExists();
-  }, [transactionHash]);
+  }, []);
 
   const disConnectWallet = () => {
     localStorage.setItem("smartContractAccount", JSON.stringify(""));
-    setAccountAddress("")
+    setAccountAddress("");
   };
 
   return (
@@ -184,18 +205,20 @@ const Home = () => {
         alignItems: "center",
       }}
     >
-      {accountAddress ? (
+      {accountAddress.length > 0 ? (
         <button onClick={disConnectWallet}>Disconnect Wallet</button>
       ) : (
         <button onClick={connectWallet}>Connect Wallet</button>
       )}
 
-      {accountAddress && (
+      {accountAddress.length > 0 && (
         <form
           style={{ display: "flex", flexDirection: "column", gap: "20px" }}
           onSubmit={sendTransaction}
         >
-          <h3>Account Address : {accountAddress}</h3>
+          <h3>
+            Account Address : {accountAddress.length > 0 ? accountAddress : ""}
+          </h3>
           <input
             type="number"
             placeholder="Enter amount"
@@ -229,7 +252,7 @@ const Home = () => {
           </button>
         </form>
       )}
-      {transactionsArr.length && (
+      {transactionsArr?.length && (
         <h5>Total Transactions : {transactionsArr.length}</h5>
       )}
       <div
@@ -241,7 +264,7 @@ const Home = () => {
           // alignItems: "center",
         }}
       >
-        {transactionsArr.length &&
+        {transactionsArr?.length &&
           transactionsArr?.map((item: any) => {
             return (
               <>
