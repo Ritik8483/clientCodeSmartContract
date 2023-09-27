@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { contractABI, contractAddress } from "../utils/constants";
+import detectEthereumProvider from "@metamask/detect-provider";
+import { useSDK } from "@metamask/sdk-react";
 
 const Home = () => {
   const { ethereum }: any = window;
-  const walletOwner = JSON.parse(
+  console.log("ethereum", ethereum);
+
+  const walletOwner: any = JSON.parse(
     localStorage.getItem("smartContractAccount") || "{}"
   );
-  console.log("walletOwner", walletOwner);
 
   const [accountAddress, setAccountAddress] = useState(walletOwner || "");
   const [transactionHash, setTransactionHash] = useState<any>("");
@@ -19,6 +22,32 @@ const Home = () => {
     addressTo: "",
     message: "",
   });
+  // const [account, setAccount] = useState<string>();
+  // const { sdk, connected, connecting, provider, chainId } = useSDK();
+
+  // const connect = async () => {
+  //   try {
+  //     const accounts = await sdk?.connect();
+  //     setAccount(accounts?.[0]);
+  //   } catch (err) {
+  //     console.warn(`failed to connect..`, err);
+  //   }
+  // };
+
+  const getEthProvider = async () => {
+    const provider = await detectEthereumProvider();
+    console.log("provider", provider);
+    if (provider) {
+      const chainId = await ethereum.request({ method: "eth_chainId" });
+      console.log("chainId", chainId);
+    } else {
+      console.log("Please install MetaMask!");
+    }
+  };
+
+  useEffect(() => {
+    getEthProvider();
+  }, []);
 
   const handleChangeInput = (e: any) => {
     const name = e.target.name;
@@ -37,8 +66,6 @@ const Home = () => {
       const accounts = await ethereum.request({
         method: "eth_requestAccounts",
       });
-      console.log("accounts", accounts);
-
       localStorage.setItem("smartContractAccount", JSON.stringify(accounts[0]));
       setAccountAddress(accounts[0]);
     } catch (error) {
@@ -64,10 +91,6 @@ const Home = () => {
     setLoading(true);
     try {
       if (ethereum) {
-        // const amount = "0.00001";
-        // const keyword = "final 22";
-        // const addressTo = "0x0D6C2B675F25Be92B183fbF8a4cB47CF8Bc77587";
-        // const message = "Hi! final. 22";
         const transactionsContract = await createEthereumContract();
         const parsedAmount = ethers.utils.parseEther(inputValues.amount);
         const resp = await ethereum.request({
@@ -104,7 +127,6 @@ const Home = () => {
       }
     } catch (error) {
       console.log(error);
-      throw new Error("No ethereum object");
     }
   };
 
@@ -116,6 +138,8 @@ const Home = () => {
           await transactionsContract.getAllTransactions();
         const structuredTransactions = availableTransactions?.map(
           (transaction: any) => {
+            console.log("transaction",transaction);
+            
             return {
               addressTo: transaction.receiver,
               addressFrom: transaction.sender,
@@ -138,6 +162,7 @@ const Home = () => {
   };
 
   const checkIfWalletIsConnect = async () => {
+    //it is used to switch wallet from one to another
     try {
       if (!ethereum) return alert("Please install MetaMask.");
       const accounts = await ethereum.request({ method: "eth_accounts" });
@@ -180,7 +205,10 @@ const Home = () => {
   console.log(accountAddress.length > 0);
 
   useEffect(() => {
+    console.log("transactionHash", transactionHash);
+
     if (accountAddress.length > 0) {
+      console.log("called", transactionHash);
       checkIfTransactionsExists();
     }
   }, [transactionHash]);
@@ -205,6 +233,18 @@ const Home = () => {
         alignItems: "center",
       }}
     >
+      {/* <button style={{ padding: 10, margin: 10 }} onClick={connect}>
+        Connect
+      </button>
+      {connected && (
+        <div>
+          <>
+            {chainId && `Connected chain: ${chainId}`}
+            <p></p>
+            {account && `Connected account: ${account}`}
+          </>
+        </div>
+      )} */}
       {accountAddress.length > 0 ? (
         <button onClick={disConnectWallet}>Disconnect Wallet</button>
       ) : (
